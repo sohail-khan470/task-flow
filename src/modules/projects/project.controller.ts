@@ -1,7 +1,7 @@
 // src/modules/projects/project.controller.ts
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express'; // ✅ Added RequestHandler
 
-import { asyncHandler } from '#/middlewares/errorHandler.js';
+import { asyncHandler } from '#/utils/asyncHandler.js';
 import { ProjectService } from './project.service.js';
 
 export class ProjectController {
@@ -11,11 +11,7 @@ export class ProjectController {
     this.projectService = new ProjectService();
   }
 
-  /**
-   * GET /api/v1/projects
-   * List all projects with pagination
-   */
-  getAll = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  getAll: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
 
@@ -28,13 +24,8 @@ export class ProjectController {
     });
   });
 
-  /**
-   * GET /api/v1/projects/:id
-   * Get a single project by ID
-   */
-  getById = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const id = this.validateId(req.params.id);
-
+  getById: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+    const id = req.params.id as string; // Added 'as string' for consistency
     const project = await this.projectService.getProjectById({ id });
 
     res.status(200).json({
@@ -44,11 +35,7 @@ export class ProjectController {
     });
   });
 
-  /**
-   * POST /api/v1/projects
-   * Create a new project
-   */
-  create = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+  create: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const { name, description, ownerId } = req.body;
 
     const project = await this.projectService.createProject({
@@ -64,12 +51,8 @@ export class ProjectController {
     });
   });
 
-  /**
-   * PATCH /api/v1/projects/:id
-   * Partially update an existing project
-   */
-  update = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const id = this.validateId(req.params.id);
+  update: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+    const id = req.params.id as string;
     const { name, description } = req.body;
 
     const project = await this.projectService.updateProject({
@@ -84,28 +67,9 @@ export class ProjectController {
     });
   });
 
-  /**
-   * DELETE /api/v1/projects/:id
-   * Delete a project
-   */
-  delete = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
-    const id = this.validateId(req.params.id);
-
+  delete: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+    const id = req.params.id as string;
     await this.projectService.deleteProject({ id });
-
     res.status(204).send();
   });
-
-  /**
-   * Validates and narrows an Express param to a strict string.
-   * Throws 400 if missing or malformed.
-   */
-  private validateId(raw: string | string[] | undefined): string {
-    if (raw === undefined || Array.isArray(raw)) {
-      const error = new Error('Invalid project ID');
-      (error as any).statusCode = 400;
-      throw error;
-    }
-    return raw;
-  }
 }
