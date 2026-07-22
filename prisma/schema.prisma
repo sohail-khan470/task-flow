@@ -36,6 +36,11 @@ model User {
   name         String
   passwordHash String   @map("password_hash")
   role         Role     @default(MEMBER)
+  refreshTokenHash      String?   @map("refresh_token_hash")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  tokenVersion          Int       @default(0) @map("token_version")
+
+
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -81,4 +86,40 @@ model Task {
   @@index([priority])
   @@index([dueDate])
   @@map("tasks")
+}
+
+
+model IdempotencyRecord {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  // The idempotency key from the request header.
+  // @unique enforced at DB level as a backstop if Redis is down.
+
+  userId        String   @map("user_id")
+  // Scoped to the user — same key from different users are different operations.
+
+  method        String
+  // HTTP method (POST, PUT, etc.) — extra safety.
+
+  path          String
+  // Request path — same key on different endpoints are different operations.
+
+  requestHash   String   @map("request_hash")
+  // SHA-256 of the request body. If a client reuses a key with a different
+  // body, we reject with 422 instead of replaying the old response.
+
+  statusCode    Int      @map("status_code")
+  responseBody  Json     @map("response_body")
+  // The original response, stored so we can replay it verbatim.
+
+  expiresAt     DateTime @map("expires_at")
+  // After this time, the record can be cleaned up and the key reused.
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([key, userId])
+  // Composite unique: idempotency is per-user.
+  @@index([expiresAt])
+  // For cleanup jobs.
+  @@map("idempotency_records")
 }
