@@ -3,6 +3,7 @@ import { prisma } from '#/config/database.js';
 import { Prisma } from '#/generated/prisma/client.js';
 import { argon2d } from 'argon2';
 import { IUserResponse } from './user-repsonse.dto.js';
+import { ICreateUserDto } from '#/auth/register-user.dto.js';
 
 // ============================================================================
 // RETURN TYPES
@@ -54,7 +55,7 @@ export class UserRepository {
     });
   }
 
-  async register(user: Prisma.UserCreateInput) {
+  async register(user: ICreateUserDto) {
     return prisma.user.create({ data: user });
   }
 

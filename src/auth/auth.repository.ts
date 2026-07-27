@@ -2,7 +2,7 @@ import { prisma } from '#/config/database.js';
 import { User } from '#/generated/prisma/client.js';
 import { UserRepository } from '#/modules/users/user.repository.js';
 import { argon2d } from 'argon2';
-import { ICreateUserDto } from './create-user.dto.js';
+import { ICreateUserDto } from './register-user.dto.js';
 
 export class AuthRepository {
   constructor(private userRepository: UserRepository) {
