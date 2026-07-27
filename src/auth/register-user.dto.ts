@@ -8,6 +8,7 @@ export interface ICreateUserDto {
   email: string;
   passwordHash: string;
   role?: Role;
+  tokenVersion: number;
   refreshToken: string;
   refreshTokenExpiry: Date;
 }

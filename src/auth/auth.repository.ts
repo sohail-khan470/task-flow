@@ -15,7 +15,7 @@ export class AuthRepository {
   }
 
   async findUserByEmail(email: string) {
-    const user = await this.userRepository.findByEmail({ email: email.toLocaleLowerCase() });
+    const user = await this.userRepository.findByEmail({ email: email.toLowerCase() });
     return user;
   }
 
