@@ -1,6 +1,8 @@
 // src/modules/users/user.repository.ts
 import { prisma } from '#/config/database.js';
 import { Prisma } from '#/generated/prisma/client.js';
+import { argon2d } from 'argon2';
+import { IUserResponse } from './user-repsonse.dto.js';
 
 // ============================================================================
 // RETURN TYPES
@@ -39,7 +41,7 @@ export class UserRepository {
    * Used by other modules (Tasks, Projects) to verify assignees/owners exist.
    * Returns a safe subset of fields (no password).
    */
-  async findById({ id }: { id: string }): Promise<PublicUser | null> {
+  async findById(id: string): Promise<IUserResponse | null> {
     return prisma.user.findUnique({
       where: { id },
       select: {
@@ -52,13 +54,17 @@ export class UserRepository {
     });
   }
 
+  async register(user: Prisma.UserCreateInput) {
+    return prisma.user.create({ data: user });
+  }
+
   /**
    * Find a user by email.
    * Reserved for Phase 2 (Auth). Includes the passwordHash for verification.
    */
   async findByEmail({ email }: { email: string }): Promise<UserWithPassword | null> {
     return prisma.user.findUnique({
-      where: { email },
+      where: { email: email.toLowerCase() },
     });
   }
 }
