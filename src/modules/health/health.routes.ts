@@ -1,5 +1,6 @@
 // src/modules/health/health.routes.ts
 import { prisma } from '#/config/database.js';
+import { logger } from '#/config/logger.js';
 import { Router, Request, Response } from 'express';
 
 const router: Router = Router();
@@ -35,6 +36,7 @@ router.get('/ready', async (req: Request, res: Response) => {
       database: 'connected',
     });
   } catch (error) {
+    logger.debug(error);
     // If DB is unreachable, return 503 so the load balancer stops sending traffic
     res.status(503).json({
       status: 'error',
