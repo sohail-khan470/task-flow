@@ -31,7 +31,9 @@ export class AuthService {
         data.passwordHash
       ));
 
-      const hashedRefreshToken = await hashService.generateHashToken();
+      const hashTokenPayload = { sub: data.email, tokenVersion: data.tokenVersion };
+      const refreshToken = await jwtService.signRefreshToken(hashTokenPayload);
+      const hashedRefreshToken = await hashService.hashToken(refreshToken);
       const refreshTokenExpiry = new Date();
       refreshTokenExpiry.setDate(refreshTokenExpiry.getDate() + 7);
 
@@ -120,7 +122,9 @@ export class AuthService {
         sub: user.id,
         tokenVersion: user.tokenVersion,
       });
-      await this.authRepository.updateRefreshToken(userId, refreshToken);
+      const hashedToken = await hashService.hashToken(refreshToken);
+      await this.authRepository.updateRefreshToken(userId, hashedToken, new Date());
+      user.refreshTokenExpiresAt = new Date();
 
       return { refreshToken, accessToken };
     } catch (error) {

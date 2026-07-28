@@ -1,21 +1,27 @@
 import argon2 from 'argon2';
 import { randomBytes } from 'node:crypto';
 
-export async function hashPassword(password: string) {
+export async function hashPassword(password: string): Promise<string> {
   return argon2.hash(password);
 }
 
-export async function verifyPassword(password: string, hash: string) {
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return argon2.verify(hash, password);
 }
 
-//hash refresh token
-export async function generateHashToken() {
-  const randomString: any = randomBytes(32).toString('hex');
-  return await argon2.hash(randomString);
+// Generate a random token and return both the token and its hash
+export async function generateRefreshToken(): Promise<{ token: string; hash: string }> {
+  const token = randomBytes(32).toString('hex');
+  const hash = await argon2.hash(token);
+  return { token, hash };
 }
 
-//verify refresh token
-export async function verifyHashToken(rawString: string, hash: string) {
-  return argon2.verify(hash, rawString);
+// Hash an existing token (useful when you already have the token)
+export async function hashToken(token: string): Promise<string> {
+  return argon2.hash(token);
+}
+
+// Verify refresh token against its hash
+export async function verifyHashToken(rawToken: string, hash: string): Promise<boolean> {
+  return argon2.verify(hash, rawToken);
 }
