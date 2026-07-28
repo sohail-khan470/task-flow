@@ -44,6 +44,7 @@ export class AuthRepository {
       data: {
         hashedRefreshToken: hashedToken,
         refreshTokenExpiresAt: expiresIn,
+        refreshTokenVersion: { increment: 1 },
       },
     });
   }
