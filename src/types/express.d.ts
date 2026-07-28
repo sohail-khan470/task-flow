@@ -1,10 +1,15 @@
-import { Role } from '#/generated/prisma/enums.ts';
+// file: src/types/express.d.ts
+// This is a type declaration file — write it completely.
+
+import { Role } from '@prisma/client';
 
 declare global {
   namespace Express {
-    interface User {
-      id: string;
-      role: Role;
+    interface Request {
+      user?: {
+        id: string;
+        role: Role;
+      };
     }
   }
 }
