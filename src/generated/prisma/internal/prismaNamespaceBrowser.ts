@@ -53,7 +53,8 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   Project: 'Project',
-  Task: 'Task'
+  Task: 'Task',
+  IdempotencyRecord: 'IdempotencyRecord'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -78,6 +79,9 @@ export const UserScalarFieldEnum = {
   name: 'name',
   passwordHash: 'passwordHash',
   role: 'role',
+  refreshTokenHash: 'refreshTokenHash',
+  refreshTokenExpiresAt: 'refreshTokenExpiresAt',
+  tokenVersion: 'tokenVersion',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -113,12 +117,35 @@ export const TaskScalarFieldEnum = {
 export type TaskScalarFieldEnum = (typeof TaskScalarFieldEnum)[keyof typeof TaskScalarFieldEnum]
 
 
+export const IdempotencyRecordScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  userId: 'userId',
+  method: 'method',
+  path: 'path',
+  requestHash: 'requestHash',
+  statusCode: 'statusCode',
+  responseBody: 'responseBody',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type IdempotencyRecordScalarFieldEnum = (typeof IdempotencyRecordScalarFieldEnum)[keyof typeof IdempotencyRecordScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
@@ -135,4 +162,13 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 

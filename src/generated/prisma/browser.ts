@@ -32,3 +32,8 @@ export type Project = Prisma.ProjectModel
  * 
  */
 export type Task = Prisma.TaskModel
+/**
+ * Model IdempotencyRecord
+ * 
+ */
+export type IdempotencyRecord = Prisma.IdempotencyRecordModel

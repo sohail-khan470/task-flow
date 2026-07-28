@@ -57,7 +57,7 @@ export class UserRepository {
    * Find a user by email.
    * Reserved for Phase 2 (Auth). Includes the passwordHash for verification.
    */
-  async findByEmail({ email }: { email: string }): Promise<UserModel | null> {
+  async findByEmail({ email }: { email: string }) {
     return prisma.user.findUnique({
       where: { email },
     });

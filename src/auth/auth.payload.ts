@@ -6,5 +6,5 @@ export interface AccessTokenPayload {
 
 export interface RefreshTokenPayload {
   sub: string;
-  tokenVersion: string;
+  tokenVersion: number;
 }

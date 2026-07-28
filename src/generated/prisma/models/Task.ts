@@ -521,10 +521,6 @@ export type EnumPriorityFieldUpdateOperationsInput = {
   set?: $Enums.Priority
 }
 
-export type NullableDateTimeFieldUpdateOperationsInput = {
-  set?: Date | string | null
-}
-
 export type TaskCreateWithoutAssigneeInput = {
   id?: string
   title: string
