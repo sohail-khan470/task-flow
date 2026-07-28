@@ -6,6 +6,7 @@ import * as jwtService from '#/utils/jwt.service.js';
 import { AccessTokenPayload, RefreshTokenPayload } from './auth.payload.js';
 import { ILoginUserDto } from './login-user.dto.js';
 import { UnauthorizedError } from '#/utils/error.js';
+import { TokenExpiredError } from 'jsonwebtoken';
 
 export class AuthService {
   constructor(
@@ -90,33 +91,43 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
-    //user will send the token,
-    //check the token if valid or not.
-    //if valid ,extract the payload and then compare db with payload data
-    //if version and userId matches then generate new token and return it
-    //catch the errors
+    try {
+      const token = await jwtService.verify(refreshToken);
 
-    const token = await jwtService.verify(refreshToken);
-    if (!token) {
-      throw new UnauthorizedError('Invalid refresh token please login again');
-    }
-    //extract payload
-    const { sub: userId, tokenVersion } = token as RefreshTokenPayload;
+      //extract payload
+      const { sub: userId, tokenVersion } = token as RefreshTokenPayload;
 
-    const user = await this.authRepository.findById(userId);
-    if (!user) {
-      throw new UnauthorizedError('Invalid refresh token please login again');
-    }
-    if (user.tokenVersion !== tokenVersion) {
-      throw new UnauthorizedError('Invalid refresh token please login again');
-    }
+      const user = await this.authRepository.findById(userId);
+      if (!user || user.tokenVersion !== tokenVersion) {
+        throw new UnauthorizedError('Invalid refresh token please login again');
+      }
+      if (!user.refreshTokenHash) {
+        throw new UnauthorizedError('Invalid refresh token please login again');
+      }
+      const isValid = await hashService.verifyHashToken(refreshToken, user.refreshTokenHash);
+      if (!isValid) {
+        await this.authRepository.clearRefreshToken(userId);
+        throw new UnauthorizedError('Invalid refresh token please login again');
+      }
 
-    const tokenPayload: AccessTokenPayload = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    };
-    const accessToken = jwtService.signAccessToken(tokenPayload);
-    return { accessToken };
+      const tokenPayload: AccessTokenPayload = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      };
+      const accessToken = jwtService.signAccessToken(tokenPayload);
+      refreshToken = await jwtService.signRefreshToken({
+        sub: user.id,
+        tokenVersion: user.tokenVersion,
+      });
+      await this.authRepository.updateRefreshToken(userId, refreshToken);
+
+      return { refreshToken, accessToken };
+    } catch (error) {
+      if (error instanceof TokenExpiredError) {
+        throw new UnauthorizedError('Invalid refresh token please login again');
+      }
+      throw error;
+    }
   }
 }
