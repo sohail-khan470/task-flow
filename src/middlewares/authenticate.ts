@@ -3,20 +3,20 @@ import { Request, Response, NextFunction } from 'express';
 import * as jwtService from '../utils/jwt.service.js';
 import { AccessTokenPayload } from '#/auth/auth.payload.js';
 
-export const aunthenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-      throw new UnauthorizedError('Authentication errorr , Please login or register to continue');
+      throw new UnauthorizedError('Authentication error , Please login or register to continue');
     }
     const [scheme, token] = authHeader.split(' ');
     if (scheme !== 'Bearer' || !token) {
-      throw new UnauthorizedError('Authentication errorr , Please login or register to continue');
+      throw new UnauthorizedError('Authentication error , Please login or register to continue');
     }
 
     const verified = (await jwtService.verify(token)) as AccessTokenPayload;
     if (!verified) {
-      throw new UnauthorizedError('Authentication errorr , Please login or register to continue');
+      throw new UnauthorizedError('Authentication error , Please login or register to continue');
     }
 
     req.user = {
@@ -26,6 +26,10 @@ export const aunthenticate = async (req: Request, res: Response, next: NextFunct
     };
     next();
   } catch (error) {
-    throw new UnauthorizedError('Authentication errorr , Please login or register to continue');
+    if (error instanceof UnauthorizedError) {
+      next(error);
+    } else {
+      next(new UnauthorizedError('Authentication error , Please login or register to continue'));
+    }
   }
 };
