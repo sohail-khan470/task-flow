@@ -13,6 +13,7 @@ import {
   updateProjectSchema,
 } from './project.validation.js'; // FIX 2: Corrected file name from project.validation.js
 import { validate } from '#/middlewares/validate.middleware.js';
+import idempotencyMiddleware from '#/middlewares/idompotency.js';
 
 const router: Router = Router();
 const projectController = new ProjectController();
@@ -33,7 +34,7 @@ router.get('/:id', validate(getProjectSchema), projectController.getById); // FI
  * POST /api/v1/projects
  * Create a new project
  */
-router.post('/', validate(createProjectSchema), projectController.create); // FIX 3
+router.post('/', idempotencyMiddleware, validate(createProjectSchema), projectController.create); // FIX 3
 
 /**
  * PATCH /api/v1/projects/:id

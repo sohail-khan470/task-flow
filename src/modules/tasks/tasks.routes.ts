@@ -9,6 +9,7 @@ import {
   listTasksSchema,
   updateTaskSchema,
 } from './tasks.validation.js';
+import idempotencyMiddleware from '#/middlewares/idompotency.js';
 
 const taskController = new TaskController();
 
@@ -29,7 +30,12 @@ projectTasksRouter.get('/', validate(listTasksSchema), taskController.getAll);
  * POST /api/v1/projects/:projectId/tasks
  * Create a new task within a specific project
  */
-projectTasksRouter.post('/', validate(createTaskSchema), taskController.create);
+projectTasksRouter.post(
+  '/',
+  idempotencyMiddleware,
+  validate(createTaskSchema),
+  taskController.create
+);
 
 // ============================================================================
 // ROUTER 2: Flat Routes
