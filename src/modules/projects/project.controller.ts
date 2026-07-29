@@ -5,6 +5,7 @@ import { asyncHandler } from '#/utils/asyncHandler.js';
 import { ProjectService } from './project.service.js';
 import { successResponse } from '#/utils/response.js';
 import { PaginationSchema } from '#/utils/pagination.js';
+import { UnauthorizedError } from '#/utils/error.js';
 
 export class ProjectController {
   private projectService: ProjectService;
@@ -30,7 +31,12 @@ export class ProjectController {
   });
 
   create: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
-    const { name, description, ownerId } = req.body;
+    const { name, description } = req.body;
+    const ownerId = req.user?.id as string;
+
+    if (!ownerId) {
+      throw new UnauthorizedError('Authentication error. Please login or register to continue');
+    }
 
     const project = await this.projectService.createProject({
       name,

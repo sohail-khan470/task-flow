@@ -24,8 +24,8 @@ export const CreateTaskSchema = z.object({
   // ✅ FIX: Use z.coerce.date() so Prisma receives a JS Date object, not a string
   dueDate: z.coerce.date().optional(),
 
-  projectId: z.cuid2(),
-  assigneeId: z.cuid2(),
+  projectId: z.cuid2().optional(),
+  assigneeId: z.cuid2().optional(),
 });
 
 export const UpdateTaskSchema = z.object({

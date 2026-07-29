@@ -9,8 +9,9 @@ import { ProjectRepository } from '../projects/project.repository.js';
 import { UserRepository } from '../users/user.repository.js';
 import { logger } from '#/config/logger.js';
 
-import { Priority, TaskStatus } from '#/generated/prisma/client.js';
+import { Priority, TaskStatus } from '#/generated/prisma/enums.js';
 import { NotFoundError } from '#/utils/error.js';
+import { decodeCursor, encodeCursor } from '#/utils/pagination.js';
 
 export class TaskService {
   private taskRepo: TaskRepository;
@@ -24,21 +25,21 @@ export class TaskService {
   }
 
   /**
-   * Get all tasks for a specific project with pagination and filters
+   * Get all tasks for a specific project with cursor-based pagination and filters
    */
   async getTasksByProject({
     projectId,
-    page,
+    cursor,
     limit,
     status,
     priority,
   }: {
     projectId: string;
-    page: number;
+    cursor?: string;
     limit: number;
     status?: TaskStatus;
     priority?: Priority;
-  }): Promise<{ data: TaskWithAssignee[]; meta: { total: number; hasMore: boolean } }> {
+  }): Promise<{ data: TaskWithAssignee[]; meta: { cursor: string | null; hasMore: boolean } }> {
     // 1. Verify project exists
     const project = await this.projectRepo.findById({ id: projectId });
     if (!project) {
@@ -50,24 +51,32 @@ export class TaskService {
     if (status) where.status = status;
     if (priority) where.priority = priority;
 
-    // 3. Calculate skip
-    const skip = (page - 1) * limit;
+    // 3. Decode cursor if provided
+    const decodedCursor = cursor ? decodeCursor(cursor) : null;
 
-    // 4. Call repository
-    const { data, total } = await this.taskRepo.findAllByProject({
+    // 4. Call repository (Assuming you update findAllByProject to accept cursor & limit)
+    const { data, hasMore } = await this.taskRepo.findAllByProject({
       projectId,
-      skip,
-      take: limit,
+      cursor: decodedCursor,
+      limit,
       where,
     });
 
-    // 5. Return with standardized pagination meta
-    const hasMore = skip + limit < total;
+    // 5. Determine the next cursor
+    let nextCursor: string | null = null;
+    if (hasMore && data.length > 0) {
+      const lastItem = data[data.length - 1] as { id: string; createdAt: Date };
+      nextCursor = encodeCursor({
+        id: lastItem.id,
+        createdAt: lastItem.createdAt,
+      });
+    }
 
+    // 6. Return with standardized pagination meta
     return {
       data,
       meta: {
-        total,
+        cursor: nextCursor,
         hasMore,
       },
     };
@@ -106,6 +115,7 @@ export class TaskService {
 
     // 2. Verify assignee exists (if provided)
     if (input.assigneeId) {
+      // ✅ Fixed: Standardized to object parameter
       const user = await this.userRepo.findById(input.assigneeId);
       if (!user) {
         throw new NotFoundError('Assignee user not found');
@@ -143,7 +153,7 @@ export class TaskService {
     // 2. Verify assignee exists if it's being changed to a specific user
     // Note: undefined means "don't change", null means "unassign"
     if (data.assigneeId !== undefined && data.assigneeId !== null) {
-      // ✅ Standardized to object parameter
+      // ✅ Fixed: Standardized to object parameter
       const user = await this.userRepo.findById(data.assigneeId);
       if (!user) {
         throw new NotFoundError('Assignee user not found');
@@ -151,7 +161,6 @@ export class TaskService {
     }
 
     // 3. Update and return
-    // The repository will pass `null` to Prisma if data.assigneeId is null, correctly setting the DB column to NULL
     return this.taskRepo.update({ id, data });
   }
 

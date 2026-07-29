@@ -1,9 +1,8 @@
 // src/modules/tasks/task.controller.ts
-import { Request, Response } from 'express';
-
-import { asyncHandler } from '#/middlewares/errorHandler.js';
-
+import { Request, Response, RequestHandler } from 'express';
+import { asyncHandler } from '#/middlewares/errorHandler.js'; // Adjust path if needed
 import { TaskService } from './tasks.service.js';
+import { successResponse } from '#/utils/response.js';
 import { Priority, TaskStatus } from '#/generated/prisma/enums.js';
 
 export class TaskController {
@@ -15,55 +14,46 @@ export class TaskController {
 
   /**
    * GET /api/v1/projects/:projectId/tasks
-   * List all tasks for a project with pagination and filters
+   * List all tasks for a project with cursor-based pagination and filters
    */
-  getAll = asyncHandler(async (req: Request, res: Response) => {
+  getAll: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const projectId = req.params.projectId as string;
 
-    // Safely extract and coerce pagination/filter params
+    // Extract cursor-based pagination and filters from query params
     // (Your Zod middleware guarantees these are valid if they exist)
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
+    const cursor = req.query.cursor as string | undefined;
+    const limit = Number(req.query.limit) || 20;
     const status = req.query.status as TaskStatus | undefined;
     const priority = req.query.priority as Priority | undefined;
 
     const result = await this.taskService.getTasksByProject({
       projectId,
-      page,
+      cursor,
       limit,
       status,
       priority,
     });
 
-    res.status(200).json({
-      data: result.data,
-      meta: result.meta,
-      errors: null,
-    });
+    return res.status(200).json(successResponse(result.data, result.meta));
   });
 
   /**
    * GET /api/v1/tasks/:id
    * Get a single task by ID
    */
-  getById = asyncHandler(async (req: Request, res: Response) => {
+  getById: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string;
 
     const task = await this.taskService.getTaskById({ id });
 
-    res.status(200).json({
-      data: task,
-      meta: null,
-      errors: null,
-    });
+    return res.status(200).json(successResponse(task));
   });
 
   /**
    * POST /api/v1/projects/:projectId/tasks
    * Create a new task within a specific project
    */
-  create = asyncHandler(async (req: Request, res: Response) => {
-    // Merge projectId from URL params into the payload
+  create: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const projectId = req.params.projectId as string;
     const { title, description, status, priority, dueDate, assigneeId } = req.body;
 
@@ -77,18 +67,14 @@ export class TaskController {
       assigneeId,
     });
 
-    res.status(201).json({
-      data: task,
-      meta: null,
-      errors: null,
-    });
+    return res.status(201).json(successResponse(task));
   });
 
   /**
    * PATCH /api/v1/tasks/:id
    * Partially update an existing task
    */
-  update = asyncHandler(async (req: Request, res: Response) => {
+  update: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string;
     const { title, description, status, priority, dueDate, assigneeId } = req.body;
 
@@ -98,22 +84,18 @@ export class TaskController {
       data: { title, description, status, priority, dueDate, assigneeId },
     });
 
-    res.status(200).json({
-      data: task,
-      meta: null,
-      errors: null,
-    });
+    return res.status(200).json(successResponse(task));
   });
 
   /**
    * DELETE /api/v1/tasks/:id
    * Delete a task
    */
-  delete = asyncHandler(async (req: Request, res: Response) => {
+  delete: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string;
 
     await this.taskService.deleteTask({ id });
 
-    res.status(204).send();
+    return res.status(204).send();
   });
 }

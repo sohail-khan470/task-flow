@@ -1,7 +1,7 @@
 // src/modules/tasks/task.repository.ts
 import { prisma } from '#/config/database.js';
 import { Priority, Prisma, Role, TaskStatus } from '#/generated/prisma/client.js';
-import { AppError } from '#/utils/error.js'; // Adjust path if it's errors.ts
+import { AppError } from '#/utils/error.js';
 import { decodeCursor, encodeCursor } from '#/utils/pagination.js';
 
 // ============================================================================
@@ -41,40 +41,48 @@ export type TaskUpdateFields = {
 
 export class TaskRepository {
   /**
-   * Find all tasks for a specific project with pagination and optional filters
+   * Find all tasks for a specific project with cursor pagination and optional filters
    */
   async findAllByProject({
     projectId,
-    skip,
-    take,
+    cursor,
+    limit,
     where,
   }: {
     projectId: string;
-    skip: number;
-    take: number;
+    cursor: Record<string, unknown> | null;
+    limit: number;
     where?: { status?: TaskStatus; priority?: Priority };
-  }): Promise<{ data: TaskWithAssignee[]; total: number }> {
-    const finalWhere = {
+  }): Promise<{ data: TaskWithAssignee[]; hasMore: boolean }> {
+    const finalWhere: Prisma.TaskWhereInput = {
       projectId,
       ...where,
     };
 
-    const [data, total] = await Promise.all([
-      prisma.task.findMany({
+    try {
+      const items = await prisma.task.findMany({
         where: finalWhere,
-        skip,
-        take,
-        orderBy: { createdAt: 'desc' },
+        take: limit + 1,
+        skip: cursor ? 1 : 0,
+        cursor: cursor ? { id: cursor.id as string } : undefined,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         include: {
           assignee: {
             select: { id: true, name: true, email: true },
           },
         },
-      }),
-      prisma.task.count({ where: finalWhere }),
-    ]);
+      });
 
-    return { data, total };
+      const hasMore = items.length > limit;
+      const data = hasMore ? items.slice(0, -1) : items;
+
+      return { data, hasMore };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new AppError('The pagination cursor is no longer valid.', 400);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -159,7 +167,6 @@ export class TaskRepository {
    */
   private handleNotFoundError(error: unknown): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      // ✅ Fixed: use your AppError class properly
       throw new AppError('Task not found', 404);
     }
     throw error;
@@ -277,7 +284,7 @@ export class TaskRepository {
 
       nextCursor = encodeCursor({
         sortValue: lastSortValue,
-        id: lastItem?.id, // ✅ Fixed: removed unnecessary optional chaining
+        id: lastItem?.id,
       });
     }
 
