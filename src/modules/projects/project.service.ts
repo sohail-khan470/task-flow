@@ -1,8 +1,6 @@
 // src/modules/projects/project.service.ts
 import { UserRepository } from '../users/user.repository.js';
-
-import { Prisma } from '#/generated/prisma/client.js';
-import { ProjectRepository } from './proejct.repository.js';
+import { ProjectRepository } from './project.repository.js';
 import { logger } from '#/config/logger.js';
 import { NotFoundError } from '#/utils/error.js';
 
@@ -26,15 +24,14 @@ export class ProjectService {
       take: limit,
     });
 
-    const totalPages = Math.ceil(total / limit);
+    // Calculate if there are more items available
+    const hasMore = skip + limit < total;
 
     return {
       data,
       meta: {
-        page,
-        limit,
         total,
-        totalPages,
+        hasMore, // ✅ Now matches ApiResponse meta interface
       },
     };
   }
@@ -65,7 +62,7 @@ export class ProjectService {
     ownerId: string;
   }) {
     // Verify the owner exists
-    const owner = await this.userRepository.findById({ id: ownerId });
+    const owner = await this.userRepository.findById(ownerId);
 
     if (!owner) {
       throw new NotFoundError(`Owner with ID ${ownerId} not found`);
@@ -111,29 +108,11 @@ export class ProjectService {
    * Delete a project
    */
   async deleteProject({ id }: { id: string }) {
-    // Verify the project exists
-    const project = await this.getProjectById({ id });
+    // Verify the project exists (will throw NotFoundError if it doesn't)
+    await this.getProjectById({ id });
 
-    // Log warning if project has associated tasks
-    // Note: This assumes a tasks relation exists on the Project model
-    // If not, you can remove this check or add the relation later
-    try {
-      // @ts-ignore - This will work if tasks relation exists, otherwise it's safe to ignore
-      const taskCount = project.tasks?.length || 0;
-      if (taskCount > 0) {
-        logger.warn(
-          {
-            projectId: id,
-            taskCount,
-            action: 'delete',
-          },
-          'Deleting project with associated tasks - cascade deletion will remove them'
-        );
-      }
-    } catch (error) {
-      // Project doesn't have tasks relation or error occurred, continue with deletion
-      logger.debug({ projectId: id }, 'Could not check task count, proceeding with deletion');
-    }
+    // Note: If you need to warn about associated tasks,
+    // you should add a method like `countTasksByProjectId` to your repository.
 
     // Delete the project
     await this.projectRepository.delete({ id });

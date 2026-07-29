@@ -5,19 +5,12 @@ import {
   TaskWithAssignee,
   TaskWithAssigneeAndProject,
 } from './tasks.repository.js';
-import { ProjectRepository } from '#/modules/projects/proejct.repository.js';
-import { UserRepository } from '#/modules/users/user.repository.js'; // Adjust path to your user repo
+import { ProjectRepository } from '../projects/project.repository.js';
+import { UserRepository } from '../users/user.repository.js';
+import { logger } from '#/config/logger.js';
 
-// Adjust these imports to wherever your custom error classes are defined
 import { Priority, TaskStatus } from '#/generated/prisma/client.js';
 import { NotFoundError } from '#/utils/error.js';
-
-export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
 
 export class TaskService {
   private taskRepo: TaskRepository;
@@ -45,7 +38,7 @@ export class TaskService {
     limit: number;
     status?: TaskStatus;
     priority?: Priority;
-  }): Promise<{ data: TaskWithAssignee[]; meta: PaginationMeta }> {
+  }): Promise<{ data: TaskWithAssignee[]; meta: { total: number; hasMore: boolean } }> {
     // 1. Verify project exists
     const project = await this.projectRepo.findById({ id: projectId });
     if (!project) {
@@ -68,14 +61,14 @@ export class TaskService {
       where,
     });
 
-    // 5. Return with pagination meta
+    // 5. Return with standardized pagination meta
+    const hasMore = skip + limit < total;
+
     return {
       data,
       meta: {
-        page,
-        limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        hasMore,
       },
     };
   }
@@ -113,7 +106,7 @@ export class TaskService {
 
     // 2. Verify assignee exists (if provided)
     if (input.assigneeId) {
-      const user = await this.userRepo.findById({ id: input.assigneeId });
+      const user = await this.userRepo.findById(input.assigneeId);
       if (!user) {
         throw new NotFoundError('Assignee user not found');
       }
@@ -121,8 +114,9 @@ export class TaskService {
 
     // 3. Edge Case: Log warning for past due dates
     if (input.dueDate && input.dueDate < new Date()) {
-      console.warn(
-        `[TaskService] Task "${input.title}" created with a past due date: ${input.dueDate.toISOString()}`
+      logger.warn(
+        { title: input.title, dueDate: input.dueDate },
+        'Task created with a past due date'
       );
     }
 
@@ -149,7 +143,8 @@ export class TaskService {
     // 2. Verify assignee exists if it's being changed to a specific user
     // Note: undefined means "don't change", null means "unassign"
     if (data.assigneeId !== undefined && data.assigneeId !== null) {
-      const user = await this.userRepo.findById({ id: data.assigneeId });
+      // ✅ Standardized to object parameter
+      const user = await this.userRepo.findById(data.assigneeId);
       if (!user) {
         throw new NotFoundError('Assignee user not found');
       }

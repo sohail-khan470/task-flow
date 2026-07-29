@@ -1,8 +1,9 @@
 // src/modules/projects/project.controller.ts
-import { Request, Response, NextFunction, RequestHandler } from 'express'; // ✅ Added RequestHandler
+import { Request, Response, RequestHandler } from 'express';
 
 import { asyncHandler } from '#/utils/asyncHandler.js';
 import { ProjectService } from './project.service.js';
+import { successResponse } from '#/utils/response.js';
 
 export class ProjectController {
   private projectService: ProjectService;
@@ -17,22 +18,15 @@ export class ProjectController {
 
     const result = await this.projectService.getAllProjects({ page, limit });
 
-    res.status(200).json({
-      data: result.data,
-      meta: result.meta,
-      errors: null,
-    });
+    // Use successResponse, passing the data and meta
+    return res.status(200).json(successResponse(result.data, result.meta));
   });
 
   getById: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
-    const id = req.params.id as string; // Added 'as string' for consistency
+    const id = req.params.id as string;
     const project = await this.projectService.getProjectById({ id });
 
-    res.status(200).json({
-      data: project,
-      meta: null,
-      errors: null,
-    });
+    return res.status(200).json(successResponse(project));
   });
 
   create: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -44,11 +38,7 @@ export class ProjectController {
       ownerId,
     });
 
-    res.status(201).json({
-      data: project,
-      meta: null,
-      errors: null,
-    });
+    return res.status(201).json(successResponse(project));
   });
 
   update: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -60,16 +50,16 @@ export class ProjectController {
       data: { name, description },
     });
 
-    res.status(200).json({
-      data: project,
-      meta: null,
-      errors: null,
-    });
+    return res.status(200).json(successResponse(project));
   });
 
   delete: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string;
     await this.projectService.deleteProject({ id });
-    res.status(204).send();
+
+    // 204 No Content is standard for deletions, so no body is sent.
+    // If you prefer to send a JSON response, you could do:
+    // return res.status(200).json(successResponse({ id }));
+    return res.status(204).send();
   });
 }
