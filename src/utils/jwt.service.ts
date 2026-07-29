@@ -1,6 +1,6 @@
 import { env } from '#/config/server-config.js';
 import jwt from 'jsonwebtoken';
-import { AccessTokenPayload, RefreshTokenPayload } from '#/auth/auth.payload.js';
+import { AccessTokenPayload, RefreshTokenPayload } from '#/modules/auth/auth.payload.js';
 
 // export async function sign(payload: AccessTokenPayload | RefreshTokenPayload) {
 //   return jwt.sign(payload, env.JWT_ACCESS_SECRET, {

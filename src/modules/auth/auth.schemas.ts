@@ -1,6 +1,3 @@
-// file: src/modules/auth/auth.schemas.ts
-// This is a schema/config file, so I'm writing it completely.
-
 import { z } from 'zod';
 
 export const RegisterSchema = z.object({

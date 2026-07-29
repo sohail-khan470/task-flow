@@ -3,7 +3,7 @@ import { prisma } from '#/config/database.js';
 import { Prisma } from '#/generated/prisma/client.js';
 import { argon2d } from 'argon2';
 import { IUserResponse } from './user-repsonse.dto.js';
-import { ICreateUserDto } from '#/auth/register-user.dto.js';
+import { ICreateUserDto } from '#/modules/auth/register-user.dto.js';
 import { UserModel } from '#/generated/prisma/models.js';
 
 // ============================================================================

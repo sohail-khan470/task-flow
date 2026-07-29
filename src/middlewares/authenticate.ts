@@ -1,7 +1,7 @@
 import { UnauthorizedError } from '#/utils/error.js';
 import { Request, Response, NextFunction } from 'express';
 import * as jwtService from '../utils/jwt.service.js';
-import { AccessTokenPayload } from '#/auth/auth.payload.js';
+import { AccessTokenPayload } from '#/modules/auth/auth.payload.js';
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
