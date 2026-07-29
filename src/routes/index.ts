@@ -3,6 +3,7 @@ import { Router } from 'express';
 import healthRoutes from '../modules/health/health.routes.js';
 import { projectRouter } from '#/modules/projects/project.routes.js';
 import { tasksRouter } from '#/modules/tasks/tasks.routes.js';
+import { authRouter } from '#/modules/auth/auth.routes.js';
 
 const apiRouter: Router = Router();
 
@@ -11,6 +12,12 @@ const apiRouter: Router = Router();
  * Mounts: /api/v1/health
  */
 apiRouter.use('/health', healthRoutes);
+
+/**
+ * auth routes
+ * /api/auth
+ */
+apiRouter.use('/auth', authRouter);
 
 /**
  * Project Routes

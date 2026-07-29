@@ -4,8 +4,10 @@ const router: Router = Router();
 
 //register,
 
-router.post('/auth/register');
+router.post('/register');
 
 //login
 
-router.post('/auth/login');
+router.post('/login');
+
+export const authRouter: Router = Router();
