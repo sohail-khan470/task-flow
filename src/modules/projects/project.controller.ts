@@ -4,6 +4,7 @@ import { Request, Response, RequestHandler } from 'express';
 import { asyncHandler } from '#/utils/asyncHandler.js';
 import { ProjectService } from './project.service.js';
 import { successResponse } from '#/utils/response.js';
+import { PaginationSchema } from '#/utils/pagination.js';
 
 export class ProjectController {
   private projectService: ProjectService;
@@ -13,12 +14,11 @@ export class ProjectController {
   }
 
   getAll: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
+    // ✅ Validate and parse cursor & limit from query params
+    const { cursor, limit } = PaginationSchema.parse(req.query);
 
-    const result = await this.projectService.getAllProjects({ page, limit });
+    const result = await this.projectService.getAllProjects({ cursor, limit });
 
-    // Use successResponse, passing the data and meta
     return res.status(200).json(successResponse(result.data, result.meta));
   });
 

@@ -3,6 +3,7 @@ import { UserRepository } from '../users/user.repository.js';
 import { ProjectRepository } from './project.repository.js';
 import { logger } from '#/config/logger.js';
 import { NotFoundError } from '#/utils/error.js';
+import { decodeCursor, encodeCursor } from '#/utils/pagination.js';
 
 export class ProjectService {
   private projectRepository: ProjectRepository;
@@ -16,22 +17,53 @@ export class ProjectService {
   /**
    * Get all projects with pagination
    */
-  async getAllProjects({ page, limit }: { page: number; limit: number }) {
-    const skip = (page - 1) * limit;
+  // async getAllProjects({ page, limit }: { page: number; limit: number }) {
+  //   const skip = (page - 1) * limit;
 
-    const { data, total } = await this.projectRepository.findAll({
-      skip,
-      take: limit,
+  //   const { data, total } = await this.projectRepository.findAll({
+  //     skip,
+  //     take: limit,
+  //   });
+
+  //   // Calculate if there are more items available
+  //   const hasMore = skip + limit < total;
+
+  //   return {
+  //     data,
+  //     meta: {
+  //       total,
+  //       hasMore, // ✅ Now matches ApiResponse meta interface
+  //     },
+  //   };
+  // }
+
+  async getAllProjects({ cursor, limit }: { cursor?: string; limit: number }) {
+    // 1. Decode the cursor if it exists
+    const decodedCursor = cursor ? decodeCursor(cursor) : null;
+
+    // 2. Fetch data + hasMore flag from repository
+    const { data, hasMore } = await this.projectRepository.findAll({
+      cursor: decodedCursor,
+      limit,
     });
 
-    // Calculate if there are more items available
-    const hasMore = skip + limit < total;
+    // 3. Determine the next cursor
+    let nextCursor: string | null = null;
+    if (hasMore && data.length > 0) {
+      const lastItem = data[data.length - 1] as { id: string; createdAt: Date };
+      // Encode the last item's ID and createdAt to form the next cursor
+      nextCursor = encodeCursor({
+        id: lastItem.id,
+        createdAt: lastItem.createdAt,
+      });
+    }
 
+    // 4. Return in standard ApiResponse format
     return {
       data,
       meta: {
-        total,
-        hasMore, // ✅ Now matches ApiResponse meta interface
+        cursor: nextCursor,
+        hasMore,
       },
     };
   }
