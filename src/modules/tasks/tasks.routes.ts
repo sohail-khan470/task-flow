@@ -18,24 +18,19 @@ const taskController = new TaskController();
 // Base URL in app.ts: /api/v1/projects/:projectId/tasks
 // Used for operations that require the parent Project ID.
 // ============================================================================
-export const projectTasksRouter: Router = Router();
+export const taskRouter: Router = Router();
 
 /**
  * GET /api/v1/projects/:projectId/tasks
  * List all tasks for a specific project
  */
-projectTasksRouter.get('/', validate(listTasksSchema), taskController.getAll);
+taskRouter.get('/', validate(listTasksSchema), taskController.getAll);
 
 /**
  * POST /api/v1/projects/:projectId/tasks
  * Create a new task within a specific project
  */
-projectTasksRouter.post(
-  '/',
-  idempotencyMiddleware,
-  validate(createTaskSchema),
-  taskController.create
-);
+taskRouter.post('/', idempotencyMiddleware, validate(createTaskSchema), taskController.create);
 
 // ============================================================================
 // ROUTER 2: Flat Routes

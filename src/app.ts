@@ -1,4 +1,4 @@
-import express, { Express } from 'express';
+import express, { Express, Request, Response } from 'express';
 import { securityMiddleware } from './middlewares/security.middleware.js';
 import { env } from './config/server-config.js';
 import morgan from 'morgan';
@@ -15,6 +15,16 @@ app.use(express.json({ limit: '16kb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // TODO: Add your routes here
-// app.use('/api/v1', routes);
+app.use('/api/v1', routes);
+
+app.use((req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      code: 'NOT_FOUND',
+      message: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+    },
+  });
+});
 
 app.use('/', healthRoutes);

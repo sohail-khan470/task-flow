@@ -48,4 +48,4 @@ router.patch('/:id', validate(updateProjectSchema), projectController.update); /
  */
 router.delete('/:id', validate(getProjectSchema), projectController.delete); // FIX 3
 
-export default router;
+export const projectRouter: Router = Router();
