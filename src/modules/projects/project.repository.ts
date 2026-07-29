@@ -3,30 +3,29 @@ import { prisma } from '#/config/database.js';
 import { Prisma } from '#/generated/prisma/client.js';
 import { AppError, NotFoundError } from '#/utils/error.js';
 
+// ============================================================================
+// RETURN TYPES
+// ============================================================================
+export type ProjectWithOwner = Prisma.ProjectGetPayload<{
+  include: {
+    owner: {
+      select: { id: true; name: true; email: true; role: true };
+    };
+  };
+}>;
+
+// ============================================================================
+// REPOSITORY CLASS
+// ============================================================================
+
 export class ProjectRepository {
-  // async findAll({ skip, take }: { skip: number; take: number }) {
-  //   const [data, total] = await Promise.all([
-  //     prisma.project.findMany({
-  //       skip,
-  //       take,
-  //       orderBy: { createdAt: 'desc' },
-  //       include: {
-  //         owner: {
-  //           select: {
-  //             id: true,
-  //             name: true,
-  //             email: true,
-  //           },
-  //         },
-  //       },
-  //     }),
-  //     prisma.project.count(),
-  //   ]);
-
-  //   return { data, total };
-  // }
-
-  async findAll({ cursor, limit }: { cursor: Record<string, unknown> | null; limit: number }) {
+  async findAll({
+    cursor,
+    limit,
+  }: {
+    cursor: Record<string, unknown> | null;
+    limit: number;
+  }): Promise<{ data: ProjectWithOwner[]; hasMore: boolean }> {
     try {
       const items = await prisma.project.findMany({
         take: limit + 1,
@@ -39,6 +38,7 @@ export class ProjectRepository {
               id: true,
               name: true,
               email: true,
+              role: true,
             },
           },
         },
@@ -50,14 +50,13 @@ export class ProjectRepository {
       return { data, hasMore };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-        // ✅ Fixed: Pass message and statusCode
         throw new AppError('The pagination cursor is no longer valid.', 400);
       }
       throw error;
     }
   }
 
-  async findById({ id }: { id: string }) {
+  async findById({ id }: { id: string }): Promise<ProjectWithOwner | null> {
     return prisma.project.findUnique({
       where: { id },
       include: {
@@ -66,6 +65,7 @@ export class ProjectRepository {
             id: true,
             name: true,
             email: true,
+            role: true,
           },
         },
       },
@@ -80,7 +80,7 @@ export class ProjectRepository {
     name: string;
     description?: string;
     ownerId: string;
-  }) {
+  }): Promise<ProjectWithOwner> {
     return prisma.project.create({
       data: {
         name,
@@ -93,13 +93,20 @@ export class ProjectRepository {
             id: true,
             name: true,
             email: true,
+            role: true,
           },
         },
       },
     });
   }
 
-  async update({ id, data }: { id: string; data: { name?: string; description?: string } }) {
+  async update({
+    id,
+    data,
+  }: {
+    id: string;
+    data: { name?: string; description?: string };
+  }): Promise<ProjectWithOwner> {
     try {
       return await prisma.project.update({
         where: { id },
@@ -110,25 +117,28 @@ export class ProjectRepository {
               id: true,
               name: true,
               email: true,
+              role: true,
             },
           },
         },
       });
-    } catch (error: any) {
-      if (error.code === 'P2025') {
+    } catch (error) {
+      // ✅ Type-safe error handling instead of `any`
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
         throw new NotFoundError(`Project with ID ${id} not found`);
       }
       throw error;
     }
   }
 
-  async delete({ id }: { id: string }) {
+  async delete({ id }: { id: string }): Promise<void> {
     try {
       await prisma.project.delete({
         where: { id },
       });
-    } catch (error: any) {
-      if (error.code === 'P2025') {
+    } catch (error) {
+      // ✅ Type-safe error handling instead of `any`
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
         throw new NotFoundError(`Project with ID ${id} not found`);
       }
       throw error;

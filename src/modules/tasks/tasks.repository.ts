@@ -1,13 +1,11 @@
 // src/modules/tasks/task.repository.ts
-
 import { prisma } from '#/config/database.js';
-import { Priority, Prisma, TaskStatus } from '#/generated/prisma/client.js';
-// Adjust these imports based on your actual project structure
+import { Priority, Prisma, Role, TaskStatus } from '#/generated/prisma/client.js';
+import { AppError } from '#/utils/error.js'; // Adjust path if it's errors.ts
+import { decodeCursor, encodeCursor } from '#/utils/pagination.js';
 
 // ============================================================================
 // RETURN TYPES
-// Using Prisma's GetPayload to accurately type the returned objects
-// based on the specific `include` and `select` clauses used in queries.
 // ============================================================================
 
 export type TaskWithAssignee = Prisma.TaskGetPayload<{
@@ -21,7 +19,13 @@ export type TaskWithAssigneeAndProject = Prisma.TaskGetPayload<{
   };
 }>;
 
-// Define the allowed fields for updating to prevent accidental mutations of immutable fields
+export type TaskWithAssigneeAndBasicProject = Prisma.TaskGetPayload<{
+  include: {
+    assignee: { select: { id: true; name: true; email: true } };
+    project: { select: { id: true; name: true } };
+  };
+}>;
+
 export type TaskUpdateFields = {
   title?: string;
   description?: string | null;
@@ -55,7 +59,6 @@ export class TaskRepository {
       ...where,
     };
 
-    // Run both queries in parallel for better performance
     const [data, total] = await Promise.all([
       prisma.task.findMany({
         where: finalWhere,
@@ -153,15 +156,136 @@ export class TaskRepository {
 
   /**
    * Helper to handle Prisma P2025 (Record not found) errors.
-   * Throws a 404 error that can be caught by your global error handler.
    */
   private handleNotFoundError(error: unknown): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      const err = new Error('Task not found');
-      (err as any).statusCode = 404;
-      throw err;
+      // ✅ Fixed: use your AppError class properly
+      throw new AppError('Task not found', 404);
     }
-    // Re-throw if it's a different kind of error
     throw error;
+  }
+
+  /**
+   * Find all tasks with dynamic cursor-based pagination, filters, and role-based access
+   */
+  async findAll({
+    filters,
+    user,
+    pagination,
+  }: {
+    filters: {
+      status?: TaskStatus;
+      priority?: Priority;
+      projectId?: string;
+      assigneeId?: string;
+    };
+    user: {
+      id: string;
+      role: Role;
+    };
+    pagination: {
+      limit: number;
+      cursor?: string | null;
+      sortBy: string;
+      sortOrder: 'asc' | 'desc';
+    };
+  }): Promise<{
+    items: TaskWithAssigneeAndBasicProject[];
+    nextCursor: string | null;
+    hasMore: boolean;
+  }> {
+    // 1. Initialize Prisma where clause
+    const where: Prisma.TaskWhereInput = {};
+
+    // 2. Add dynamic filters
+    if (filters.status) where.status = filters.status;
+    if (filters.priority) where.priority = filters.priority;
+    if (filters.projectId) where.projectId = filters.projectId;
+    if (filters.assigneeId) where.assigneeId = filters.assigneeId;
+
+    // 3. Add ownership filter if user is a MEMBER
+    if (user.role === 'MEMBER') {
+      where.OR = [{ project: { ownerId: user.id } }, { assigneeId: user.id }];
+    }
+
+    const { limit, cursor, sortBy, sortOrder } = pagination;
+
+    // 4. Add cursor conditions if cursor is provided
+    if (cursor) {
+      let decodedCursor: { sortValue: string | Date; id: string };
+
+      try {
+        decodedCursor = decodeCursor(cursor) as { sortValue: string | Date; id: string };
+      } catch {
+        throw new AppError('The pagination cursor is malformed.', 400);
+      }
+
+      const { sortValue, id } = decodedCursor;
+
+      const cursorCondition: Prisma.TaskWhereInput =
+        sortOrder === 'asc'
+          ? {
+              OR: [
+                { [sortBy]: { gt: sortValue } } as Prisma.TaskWhereInput,
+                { AND: [{ [sortBy]: sortValue } as Prisma.TaskWhereInput, { id: { gt: id } }] },
+              ],
+            }
+          : {
+              OR: [
+                { [sortBy]: { lt: sortValue } } as Prisma.TaskWhereInput,
+                { AND: [{ [sortBy]: sortValue } as Prisma.TaskWhereInput, { id: { lt: id } }] },
+              ],
+            };
+
+      // Merge cursor conditions safely
+      if (where.OR) {
+        where.AND = [cursorCondition];
+      } else {
+        Object.assign(where, cursorCondition);
+      }
+    }
+
+    // 5. Set deterministic ordering
+    const orderBy: Prisma.TaskOrderByWithRelationInput[] = [
+      { [sortBy]: sortOrder } as Prisma.TaskOrderByWithRelationInput,
+      { id: sortOrder },
+    ];
+
+    // 6. Take limit + 1
+    const take = limit + 1;
+
+    // 7. Execute the query
+    const items = await prisma.task.findMany({
+      where,
+      orderBy,
+      take,
+      include: {
+        assignee: { select: { id: true, name: true, email: true } },
+        project: { select: { id: true, name: true } },
+      },
+    });
+
+    // 8. Determine hasMore and build nextCursor
+    const hasMore = items.length > limit;
+    const data = hasMore ? items.slice(0, -1) : items;
+
+    let nextCursor: string | null = null;
+
+    if (hasMore && data.length > 0) {
+      const lastItem = data[data.length - 1];
+      const lastSortValue = (lastItem as Record<string, unknown>)[sortBy];
+
+      nextCursor = encodeCursor({
+        sortValue: lastSortValue,
+        id: lastItem?.id, // ✅ Fixed: removed unnecessary optional chaining
+      });
+    }
+
+    // 9. Return expected output structure
+    return {
+      items: data,
+      nextCursor,
+      hasMore,
+    };
   }
 }
